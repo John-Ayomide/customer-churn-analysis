@@ -186,5 +186,5 @@ Based on the analysis so far:
 **John Ayomide**
 
 - GitHub: [@John-Ayomide](https://github.com/John-Ayomide)
-- LinkedIn: [Your LinkedIn Profile](https://https://www.linkedin.com/in/john-aiyenomuro-19aa26211/?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3B%2FxxupC3sQQOhte8VhfIWtg%3D%3D)
+- LinkedIn: [John Aiyenomuro](https://https://www.linkedin.com/in/john-aiyenomuro-19aa26211/?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3B%2FxxupC3sQQOhte8VhfIWtg%3D%3D)
 - Email: jayomide123@gmail.com
