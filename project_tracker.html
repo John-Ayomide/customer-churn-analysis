@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Churn Analysis — Project Journal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e8e8f0;min-height:100vh;padding:40px 20px}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,160,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,160,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.container{max-width:960px;margin:0 auto;position:relative;z-index:1}
+.header{margin-bottom:48px;border-bottom:1px solid #2a2a3a;padding-bottom:32px}
+.eyebrow{font-size:11px;color:#00e5a0;letter-spacing:3px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:'';width:24px;height:1px;background:#00e5a0}
+h1{font-size:clamp(22px,4vw,36px);font-weight:700;line-height:1.2;margin-bottom:12px}
+h1 span{color:#00e5a0}
+.header-sub{color:#6b6b80;font-size:15px;margin-top:8px}
+.header-meta{font-size:14px;color:#6b6b80;display:flex;gap:24px;flex-wrap:wrap;margin-top:16px}
+.dot{width:6px;height:6px;border-radius:50%;background:#00e5a0;display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:48px}
+.stat-card{background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:20px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac,#00e5a0)}
+.stat-label{font-size:11px;color:#6b6b80;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.stat-value{font-size:28px;font-weight:700;color:var(--ac,#00e5a0)}
+.stat-sub{font-size:12px;color:#6b6b80;margin-top:4px}
+.progress-wrap{background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:24px;margin-bottom:48px}
+.progress-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.progress-lbl{font-size:13px;color:#9999aa;text-transform:uppercase;letter-spacing:2px}
+.progress-pct{font-size:13px;color:#00e5a0}
+.progress-track{height:6px;background:#2a2a3a;border-radius:100px;overflow:hidden}
+.progress-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,#00e5a0,#7b61ff);transition:width 1s ease}
+.section-title{font-size:11px;color:#6b6b80;text-transform:uppercase;letter-spacing:3px;margin-bottom:20px;display:flex;align-items:center;gap:12px}
+.section-title::after{content:'';flex:1;height:1px;background:#2a2a3a}
+.days-grid{display:flex;flex-direction:column;gap:16px;margin-bottom:48px}
+.day-card{background:#111118;border:1px solid #2a2a3a;border-radius:12px;overflow:hidden;transition:border-color 0.2s}
+.day-card:hover{border-color:#7b61ff}
+.day-card.completed{border-color:rgba(0,229,160,0.3)}
+.day-card.active{border-color:#7b61ff}
+.day-card.locked{opacity:0.5}
+.day-header{padding:20px 24px;display:flex;align-items:center;gap:16px;cursor:pointer;user-select:none}
+.day-num{font-size:11px;color:#6b6b80;text-transform:uppercase;letter-spacing:2px;min-width:50px}
+.day-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;border:1px solid #2a2a3a}
+.completed .day-icon{background:rgba(0,229,160,0.15);border-color:#00e5a0;color:#00e5a0}
+.active .day-icon{background:rgba(123,97,255,0.15);border-color:#7b61ff;color:#7b61ff;animation:activePulse 2s infinite}
+@keyframes activePulse{0%,100%{box-shadow:0 0 0 0 rgba(123,97,255,0.4)}50%{box-shadow:0 0 0 6px rgba(123,97,255,0)}}
+.day-info{flex:1}
+.day-title-text{font-size:15px;font-weight:600;color:#e8e8f0;margin-bottom:4px}
+.day-subtitle-text{font-size:13px;color:#6b6b80}
+.day-date-text{font-size:11px;color:#6b6b80}
+.day-body{display:none;border-top:1px solid #2a2a3a}
+.day-body.open{display:block}
+.tabs{display:flex;border-bottom:1px solid #2a2a3a;padding:0 24px;background:#0d0d15}
+.tab-btn{font-size:12px;padding:12px 16px;cursor:pointer;border:none;background:none;color:#6b6b80;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit;transition:all 0.15s}
+.tab-btn:hover{color:#9999aa}
+.tab-btn.active{color:#00e5a0;border-bottom-color:#00e5a0}
+.tab-panel{display:none;padding:24px}
+.tab-panel.active{display:block}
+.tasks-list{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.task-item{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;background:#1a1a24;border-radius:8px;border:1px solid transparent;cursor:pointer;transition:all 0.15s;user-select:none}
+.task-item:hover{border-color:#2a2a3a}
+.task-item.done{opacity:0.6}
+.task-item.done .task-text{text-decoration:line-through;color:#6b6b80}
+.task-checkbox{width:18px;height:18px;border-radius:4px;border:1px solid #2a2a3a;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:11px;transition:all 0.15s;color:#6b6b80}
+.task-item.done .task-checkbox{background:#00e5a0;border-color:#00e5a0;color:#000}
+.task-text{font-size:14px;color:#9999aa;line-height:1.5;flex:1}
+.task-tag{margin-left:auto;font-size:10px;padding:2px 8px;border-radius:100px;background:#111118;border:1px solid #2a2a3a;color:#6b6b80;white-space:nowrap;flex-shrink:0}
+.findings-box{background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.2);border-radius:8px;padding:16px;margin-top:16px}
+.findings-label{font-size:10px;color:#00e5a0;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+.findings-box p{font-size:13px;color:#9999aa;line-height:1.6}
+.finding-stat{font-size:16px;font-weight:700;color:#00e5a0}
+.skills-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.skill-chip{padding:4px 12px;border-radius:100px;font-size:12px;font-weight:500;border:1px solid}
+.sk-py{background:rgba(255,209,102,0.1);border-color:rgba(255,209,102,0.3);color:#ffd166}
+.sk-git{background:rgba(255,107,107,0.1);border-color:rgba(255,107,107,0.3);color:#ff6b6b}
+.sk-pd{background:rgba(0,229,160,0.1);border-color:rgba(0,229,160,0.3);color:#00e5a0}
+.sk-an{background:rgba(123,97,255,0.1);border-color:rgba(123,97,255,0.3);color:#7b61ff}
+.commit-badge{display:inline-flex;align-items:center;gap:6px;background:#1a1a24;border:1px solid #2a2a3a;border-radius:6px;padding:6px 12px;font-size:11px;color:#6b6b80;margin-top:12px}
+.commit-dot{width:8px;height:8px;border-radius:50%;background:#ffd166;flex-shrink:0}
+.code-section-lbl{font-size:11px;color:#6b6b80;text-transform:uppercase;letter-spacing:2px;margin:0 0 14px}
+.code-block{background:#0a0a0f;border:1px solid #2a2a3a;border-left:3px solid #00e5a0;border-radius:0 8px 8px 0;padding:16px;margin-bottom:16px}
+.code-step-lbl{font-size:10px;color:#00e5a0;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+.code-snippet{font-family:'Courier New',monospace;font-size:12px;color:#e8e8f0;line-height:1.8;white-space:pre-wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #2a2a3a}
+.code-explain{font-size:13px;color:#9999aa;line-height:1.8}
+.code-explain strong{color:#e8e8f0;font-weight:600}
+.code-explain code{background:#1a1a24;padding:1px 6px;border-radius:4px;font-family:'Courier New',monospace;font-size:11px;color:#00e5a0}
+.why-box{background:#1a1a24;border-radius:8px;padding:16px;margin-bottom:12px}
+.why-lbl{font-size:10px;color:#6b6b80;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+.why-txt{font-size:13px;color:#9999aa;line-height:1.8}
+.alt-box{background:#1a1a24;border:1px solid #2a2a3a;border-left:3px solid #7b61ff;border-radius:0 8px 8px 0;padding:16px;margin-bottom:12px}
+.alt-lbl{font-size:10px;color:#7b61ff;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+.alt-txt{font-size:13px;color:#9999aa;line-height:1.8}
+.alt-txt strong{color:#e8e8f0}
+.footer{border-top:1px solid #2a2a3a;padding-top:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+.footer-left{font-size:11px;color:#6b6b80}
+.github-link{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:#111118;border:1px solid #2a2a3a;border-radius:8px;font-size:13px;color:#9999aa;text-decoration:none;transition:all 0.2s}
+.github-link:hover{border-color:#00e5a0;color:#00e5a0}
+@media(max-width:600px){.stats-row{grid-template-columns:repeat(2,1fr)}.day-header{flex-wrap:wrap}.tabs{overflow-x:auto}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <div class="eyebrow">Portfolio Project 01</div>
+  <h1>Customer Churn <span>Analysis</span></h1>
+  <p class="header-sub">End-to-end ML pipeline predicting telecom customer churn — raw data to deployed dashboard</p>
+  <div class="header-meta">
+    <span><span class="dot"></span>&nbsp;In Progress</span>
+    <span>Started: 29 May 2026</span>
+    <span>1 hour/day</span>
+    <span>10 days total</span>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card" style="--ac:#00e5a0"><div class="stat-label">Days Done</div><div class="stat-value" id="days-done">3</div><div class="stat-sub">of 10 planned</div></div>
+  <div class="stat-card" style="--ac:#7b61ff"><div class="stat-label">Tasks Done</div><div class="stat-value" id="tasks-done">0</div><div class="stat-sub">click to track</div></div>
+  <div class="stat-card" style="--ac:#ffd166"><div class="stat-label">Commits</div><div class="stat-value">3</div><div class="stat-sub">pushed to GitHub</div></div>
+  <div class="stat-card" style="--ac:#ff6b6b"><div class="stat-label">Key Finding</div><div class="stat-value">26.5%</div><div class="stat-sub">churn rate found</div></div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-top">
+    <div class="progress-lbl">Overall Project Progress</div>
+    <div class="progress-pct" id="progress-pct">30%</div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:30%"></div></div>
+</div>
+
+<div class="section-title">Daily Build Log</div>
+<div class="days-grid">
+
+<!-- DAY 1 -->
+<div class="day-card completed" id="day-1">
+  <div class="day-header" onclick="toggleDay('day-1')">
+    <div class="day-num">Day 01</div>
+    <div class="day-icon">&#10003;</div>
+    <div class="day-info"><div class="day-title-text">Environment &amp; GitHub Setup</div><div class="day-subtitle-text">Folder structure, virtual environment, first commit pushed</div></div>
+    <div class="day-date-text">29 May 2026</div>
+  </div>
+  <div class="day-body" id="day-1-body">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('day-1','tasks')">Tasks</button>
+      <button class="tab-btn" onclick="switchTab('day-1','code')">Code &amp; Explanation</button>
+      <button class="tab-btn" onclick="switchTab('day-1','why')">Purpose &amp; Goals</button>
+    </div>
+    <div class="tab-panel active" id="day-1-tasks">
+      <ul class="tasks-list">
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Created project folder structure: data/, notebooks/, src/, reports/</div><span class="task-tag">setup</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Created and activated Python virtual environment (venv)</div><span class="task-tag">setup</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Installed pandas, numpy, matplotlib, seaborn, jupyter</div><span class="task-tag">setup</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Created requirements.txt and .gitignore</div><span class="task-tag">setup</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Created GitHub repository and pushed first commit</div><span class="task-tag">git</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Downloaded Telco Customer Churn dataset from Kaggle</div><span class="task-tag">data</span></li>
+      </ul>
+      <div class="skills-chips"><span class="skill-chip sk-py">Python venv</span><span class="skill-chip sk-git">git init</span><span class="skill-chip sk-git">git push</span></div>
+      <div class="commit-badge"><div class="commit-dot"></div>"Initial project setup — folder structure and dependencies"</div>
+    </div>
+    <div class="tab-panel" id="day-1-code">
+      <p class="code-section-lbl">Commands run and what they do</p>
+      <div class="code-block">
+        <div class="code-step-lbl">Step 1 — Create folder structure</div>
+        <div class="code-snippet">mkdir data
+mkdir notebooks
+mkdir src
+mkdir reports</div>
+        <div class="code-explain"><strong>What this does:</strong> Creates four empty folders inside your project. Each has a specific role. <code>data/</code> stores all CSV files. <code>notebooks/</code> holds Jupyter analysis files. <code>src/</code> is for reusable Python scripts later. <code>reports/</code> is where charts and PDF outputs are saved.<br><br><strong>Why run them separately on Windows:</strong> Windows PowerShell mkdir can only create one folder at a time, unlike Linux/Mac which accepts multiple names in one command.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Step 2 — Virtual environment</div>
+        <div class="code-snippet">python -m venv venv
+venv\Scripts\activate</div>
+        <div class="code-explain"><strong>What this does:</strong> Creates an isolated Python environment just for this project. When activated, any library you install only lives inside this project folder — it will not affect other Python projects on your computer.<br><br><strong>Why this matters:</strong> Without a virtual environment, all projects share the same libraries. Project A needs Pandas 1.5, Project B needs Pandas 2.0 — they break each other. venv solves this completely.<br><br><strong>How you know it worked:</strong> You see <code>(venv)</code> at the start of your terminal line.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Step 3 — Install libraries and save dependencies</div>
+        <div class="code-snippet">pip install pandas numpy matplotlib seaborn jupyter
+pip freeze > requirements.txt</div>
+        <div class="code-explain"><strong>What this does:</strong> Installs five core data science libraries. <code>pip freeze > requirements.txt</code> saves the exact version of every installed library into a text file.<br><br><strong>Why requirements.txt matters:</strong> Anyone who clones your GitHub repo can run <code>pip install -r requirements.txt</code> and get exactly the same libraries. This makes your project reproducible — a professional standard recruiters notice.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Step 4 — GitHub setup</div>
+        <div class="code-snippet">git init
+git add .
+git commit -m "Initial project setup..."
+git remote add origin https://github.com/...
+git push -u origin master</div>
+        <div class="code-explain"><strong>What each line does:</strong><br><br><code>git init</code> — turns this folder into a Git repository and starts tracking changes<br><code>git add .</code> — stages all files, telling Git to include everything in the next save<br><code>git commit -m</code> — saves a snapshot of your project with a message<br><code>git remote add origin</code> — connects your local project to your GitHub repository online<br><code>git push</code> — uploads your code to GitHub so it is live and visible</div>
+      </div>
+    </div>
+    <div class="tab-panel" id="day-1-why">
+      <div class="why-box"><div class="why-lbl">Purpose of Day 1</div><div class="why-txt">Day 1 is never about analysis — it is about building a professional foundation. Every real-world data project starts with structure. Without it, projects become messy fast: files everywhere, no version history, libraries conflicting. One hour here means every future hour is spent on actual analysis, not firefighting.</div></div>
+      <div class="why-box"><div class="why-lbl">Goal achieved</div><div class="why-txt">A clean professional project skeleton is live on GitHub with a real commit history from Day 1. Recruiters who visit your GitHub see organised structure immediately — before they read a single line of your analysis code.</div></div>
+      <div class="alt-box"><div class="alt-lbl">Alternative approaches</div><div class="alt-txt">You could use <strong>Conda</strong> instead of venv — it manages both Python versions and libraries together. More powerful but more complex for a beginner. <strong>Poetry</strong> is becoming the modern standard for dependency management and is worth learning after you are comfortable with venv.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 2 -->
+<div class="day-card completed" id="day-2">
+  <div class="day-header" onclick="toggleDay('day-2')">
+    <div class="day-num">Day 02</div>
+    <div class="day-icon">&#10003;</div>
+    <div class="day-info"><div class="day-title-text">First Look at the Data</div><div class="day-subtitle-text">Loaded dataset, explored structure, discovered 26.5% churn rate</div></div>
+    <div class="day-date-text">29 May 2026</div>
+  </div>
+  <div class="day-body" id="day-2-body">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('day-2','tasks')">Tasks</button>
+      <button class="tab-btn" onclick="switchTab('day-2','code')">Code &amp; Explanation</button>
+      <button class="tab-btn" onclick="switchTab('day-2','why')">Purpose &amp; Goals</button>
+    </div>
+    <div class="tab-panel active" id="day-2-tasks">
+      <ul class="tasks-list">
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Launched Jupyter and created 01_first_look.ipynb</div><span class="task-tag">jupyter</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Loaded CSV into Pandas DataFrame — confirmed shape (7043, 21)</div><span class="task-tag">pandas</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Checked column names, data types, and missing values</div><span class="task-tag">eda</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Calculated churn rate — found 26.5% (1,869 customers churned)</div><span class="task-tag">analysis</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Wrote first analytical observation in plain English</div><span class="task-tag">docs</span></li>
+      </ul>
+      <div class="findings-box">
+        <div class="findings-label">Key Finding from Day 2</div>
+        <p>Dataset contains <span class="finding-stat">7,043</span> customers across <span class="finding-stat">21</span> features. Churn rate is <span class="finding-stat">26.5%</span> — nearly double the telecom industry average of 10-15%. Over 1 in 4 customers is leaving.</p>
+      </div>
+      <div class="skills-chips"><span class="skill-chip sk-pd">pd.read_csv()</span><span class="skill-chip sk-pd">df.shape</span><span class="skill-chip sk-pd">value_counts()</span><span class="skill-chip sk-an">Churn Rate</span></div>
+      <div class="commit-badge"><div class="commit-dot"></div>"Notebook 1: First look — identified 26.5% churn rate across 7,043 customers"</div>
+    </div>
+    <div class="tab-panel" id="day-2-code">
+      <p class="code-section-lbl">Every code cell explained</p>
+      <div class="code-block">
+        <div class="code-step-lbl">Cell 1 — Import libraries</div>
+        <div class="code-snippet">import pandas as pd
+import numpy as np</div>
+        <div class="code-explain"><strong>What this does:</strong> Loads two libraries into memory so we can use their functions throughout the notebook.<br><br><strong>pandas</strong> is the core tool for working with data tables in Python — a programmable Excel. <code>as pd</code> is a short nickname used universally by data analysts worldwide.<br><br><strong>numpy</strong> provides fast mathematical operations. Pandas uses it internally. We import it as <code>np</code> by convention.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Cell 2 — Load the data</div>
+        <div class="code-snippet">df = pd.read_csv('../data/WA_Fn-UseC_-Telco-Customer-Churn.csv')
+print("Shape:", df.shape)</div>
+        <div class="code-explain"><strong>What this does:</strong> Reads the CSV file and stores it in <code>df</code> — short for DataFrame, the standard name used by every pandas analyst.<br><br><strong>df.shape</strong> returns (rows, columns). We saw (7043, 21) — 7,043 customers with 21 pieces of information each.<br><br><strong>The ../data/ path:</strong> The <code>..</code> means go up one folder. From notebooks/ we go up to the project root, then into data/. This keeps paths relative so the project works on any computer.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Cell 3 — Check data types</div>
+        <div class="code-snippet">df.dtypes</div>
+        <div class="code-explain"><strong>What this does:</strong> Shows the data type of every column.<br><br><strong>The three types we care about:</strong><br><code>object</code> — text strings like "Yes" or "Month-to-month"<br><code>int64</code> — whole numbers like 12 months of tenure<br><code>float64</code> — decimal numbers like 29.85 monthly charges<br><br><strong>What we flagged:</strong> TotalCharges showed as <code>object</code> when it should be a number. This data quality issue was fixed on Day 3.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Cell 4 — Check missing values</div>
+        <div class="code-snippet">df.isnull().sum()</div>
+        <div class="code-explain"><strong>What this does:</strong> Counts empty cells in every column. <code>isnull()</code> returns True/False for each cell. <code>.sum()</code> adds up all the True values since True equals 1 in Python.<br><br><strong>Why always check this early:</strong> Missing values silently skew averages, break ML models, and cause errors. Finding them on Day 2 means you can plan how to fix them properly before analysis begins.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Cell 5 — Calculate the churn rate</div>
+        <div class="code-snippet">print(df['Churn'].value_counts())
+print(df['Churn'].value_counts(normalize=True).round(3))</div>
+        <div class="code-explain"><strong>What this does:</strong> <code>value_counts()</code> counts how many times each unique value appears. <code>normalize=True</code> converts counts to proportions. <code>.round(3)</code> rounds to 3 decimal places.<br><br><strong>Result:</strong> No: 5,174 (73.5%) | Yes: 1,869 (26.5%)<br><br><strong>Why 26.5% is significant:</strong> The telecom industry average is 10-15%. At 26.5% this company loses customers at nearly double the normal rate — a serious business problem that justifies building a predictive model.</div>
+      </div>
+    </div>
+    <div class="tab-panel" id="day-2-why">
+      <div class="why-box"><div class="why-lbl">Purpose of Day 2</div><div class="why-txt">This is called Exploratory Data Analysis (EDA). The rule in data science is: never touch data you have not looked at. Before cleaning, modelling, or visualising anything, you need to understand what you are working with. EDA answers the fundamental questions before you write a single analytical line of code.</div></div>
+      <div class="why-box"><div class="why-lbl">Goal achieved</div><div class="why-txt">Established the key business metric — a 26.5% churn rate that exceeds industry norms. This single number justifies the entire project. Also flagged TotalCharges stored as text — carried into Day 3 as the first cleaning task.</div></div>
+      <div class="alt-box"><div class="alt-lbl">Alternative approaches</div><div class="alt-txt"><code>df.info()</code> shows dtypes and missing value counts in one call — useful for a quick overview. <code>df.describe()</code> gives statistical summary of all numeric columns. We use both in later notebooks when preparing features for machine learning.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 3 -->
+<div class="day-card completed" id="day-3">
+  <div class="day-header" onclick="toggleDay('day-3')">
+    <div class="day-num">Day 03</div>
+    <div class="day-icon">&#10003;</div>
+    <div class="day-info"><div class="day-title-text">Data Cleaning</div><div class="day-subtitle-text">Fixed 3 data quality problems, investigated 11 missing values, saved clean dataset</div></div>
+    <div class="day-date-text">29 May 2026</div>
+  </div>
+  <div class="day-body" id="day-3-body">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('day-3','tasks')">Tasks</button>
+      <button class="tab-btn" onclick="switchTab('day-3','code')">Code &amp; Explanation</button>
+      <button class="tab-btn" onclick="switchTab('day-3','why')">Purpose &amp; Goals</button>
+    </div>
+    <div class="tab-panel active" id="day-3-tasks">
+      <ul class="tasks-list">
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Created 02_data_cleaning.ipynb</div><span class="task-tag">jupyter</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Fixed TotalCharges: converted from string to float using pd.to_numeric()</div><span class="task-tag">cleaning</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Investigated 11 missing values — all were new customers with tenure = 0</div><span class="task-tag">analysis</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Filled missing TotalCharges with 0 — justified by domain knowledge</div><span class="task-tag">cleaning</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Encoded Churn column: Yes to 1, No to 0 using .map()</div><span class="task-tag">cleaning</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Dropped CustomerID column — no analytical value</div><span class="task-tag">cleaning</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Saved clean dataset to data/churn_cleaned.csv</div><span class="task-tag">data</span></li>
+        <li class="task-item done" onclick="toggleTask(this)"><div class="task-checkbox">&#10003;</div><div class="task-text">Added full markdown documentation to notebooks 1 and 2</div><span class="task-tag">docs</span></li>
+      </ul>
+      <div class="findings-box">
+        <div class="findings-label">Cleaning Summary</div>
+        <p>Fixed <span class="finding-stat">3</span> data quality issues. Investigated <span class="finding-stat">11</span> missing values — all brand new customers, not bad data. Final dataset: <span class="finding-stat">7,043</span> rows x <span class="finding-stat">20</span> columns, zero missing values. Ready for analysis.</p>
+      </div>
+      <div class="skills-chips"><span class="skill-chip sk-pd">pd.to_numeric()</span><span class="skill-chip sk-pd">.fillna()</span><span class="skill-chip sk-pd">.map()</span><span class="skill-chip sk-pd">.drop()</span><span class="skill-chip sk-an">Missing Value Analysis</span></div>
+      <div class="commit-badge"><div class="commit-dot"></div>"Notebook 2: Data cleaning — fixed TotalCharges, encoded Churn, removed CustomerID"</div>
+    </div>
+    <div class="tab-panel" id="day-3-code">
+      <p class="code-section-lbl">Every code cell explained</p>
+      <div class="code-block">
+        <div class="code-step-lbl">Fix 1 — Convert TotalCharges to a number</div>
+        <div class="code-snippet">df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
+print("New type:", df['TotalCharges'].dtype)
+print("Missing values created:", df['TotalCharges'].isnull().sum())</div>
+        <div class="code-explain"><strong>What this does:</strong> <code>pd.to_numeric()</code> converts a column to numeric format. <code>errors='coerce'</code> means: if any value cannot convert, turn it into NaN instead of crashing.<br><br><strong>Result:</strong> dtype changed from <code>object</code> to <code>float64</code>. 11 values became NaN — which we then investigated.<br><br><strong>Why not .astype(float)?</strong> That crashes immediately on any non-numeric character. <code>pd.to_numeric(errors='coerce')</code> handles messy real-world data gracefully without stopping your entire analysis.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Investigation — why are 11 values missing?</div>
+        <div class="code-snippet">missing = df[df['TotalCharges'].isnull()]
+print(missing['tenure'].value_counts())</div>
+        <div class="code-explain"><strong>What this does:</strong> Filters the DataFrame to only rows where TotalCharges is null, then checks what these 11 rows have in common.<br><br><strong>What we found:</strong> All 11 had tenure = 0. Brand new customers who have not been billed yet. Their TotalCharges being blank is expected behaviour, not an error.<br><br><strong>Why this investigation step is critical:</strong> Without investigating, you risk making the wrong fix. In a job interview, explaining that you investigated before fixing is exactly what impresses hiring managers. It shows analytical thinking, not mechanical coding.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Fix 2 — Fill missing TotalCharges with 0</div>
+        <div class="code-snippet">df['TotalCharges'] = df['TotalCharges'].fillna(0)
+print("Missing after fix:", df['TotalCharges'].isnull().sum())</div>
+        <div class="code-explain"><strong>What this does:</strong> Replaces every NaN in TotalCharges with 0. <code>.fillna(value)</code> is the standard pandas method for filling missing values.<br><br><strong>Why 0 and not the mean?</strong> These customers genuinely have zero charges — they have not been billed yet. Filling with the mean (approximately 1,400) would be inventing false data. We fill with 0 because that is the truth. Always justify your fill value with domain knowledge, not just statistics.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Fix 3 — Encode Churn as 0 and 1</div>
+        <div class="code-snippet">df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
+print(df['Churn'].value_counts())</div>
+        <div class="code-explain"><strong>What this does:</strong> Replaces text values "Yes" and "No" with numbers 1 and 0. <code>.map()</code> takes a dictionary and substitutes each value according to your mapping.<br><br><strong>Why ML needs numbers:</strong> Algorithms perform mathematical calculations. They cannot compute the average of Yes and No but they can compute the average of 1 and 0. This is called binary encoding and is standard practice for any yes/no column.<br><br><strong>Convention:</strong> Always encode the positive event as 1. Churned = 1, stayed = 0. This is universal convention in classification problems.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Fix 4 — Drop CustomerID and save</div>
+        <div class="code-snippet">df = df.drop('customerID', axis=1)
+df.to_csv('../data/churn_cleaned.csv', index=False)</div>
+        <div class="code-explain"><strong>What this does:</strong> <code>.drop()</code> removes a column. <code>axis=1</code> means drop a column (axis=0 drops a row). Then we save cleaned data to a new file. <code>index=False</code> prevents pandas adding a row number column.<br><br><strong>Why drop CustomerID?</strong> Every row has a unique ID — no pattern can be learned from it. Including it in a model adds noise without signal.<br><br><strong>Why save to a new file?</strong> Never overwrite raw data. If you make a mistake in cleaning you need to go back. This principle is called data provenance — always knowing where your data came from.</div>
+      </div>
+    </div>
+    <div class="tab-panel" id="day-3-why">
+      <div class="why-box"><div class="why-lbl">Purpose of Day 3</div><div class="why-txt">Data cleaning is the most underestimated skill in data analysis. In real analyst jobs 60-80% of time is spent cleaning data. The goal is not to fix problems mechanically — it is to understand why each problem exists, make a justified decision, and document it so others can understand what was done and why. This is professional-level analytical thinking.</div></div>
+      <div class="why-box"><div class="why-lbl">Goal achieved</div><div class="why-txt">Transformed a messy raw dataset with 3 quality issues into a clean analysis-ready file. Every decision was investigated and justified. Clean data saved separately from raw — the professional standard. Zero missing values. All columns in correct types. Ready for visualisation and machine learning.</div></div>
+      <div class="alt-box"><div class="alt-lbl">Alternative approaches</div><div class="alt-txt">For encoding Churn you could also use <strong>LabelEncoder</strong> from scikit-learn or <strong>pd.get_dummies()</strong>. For a simple binary column <code>.map()</code> is the most readable and explicit choice. <code>pd.get_dummies()</code> becomes more useful for columns with 3 or more categories — like Contract Type with its three values. We use that approach in the machine learning notebook on Day 6.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 4 — ACTIVE -->
+<div class="day-card active" id="day-4">
+  <div class="day-header" onclick="toggleDay('day-4')">
+    <div class="day-num">Day 04</div>
+    <div class="day-icon">&#9654;</div>
+    <div class="day-info"><div class="day-title-text">Visualisations — Next Up</div><div class="day-subtitle-text">Build 3 professional charts that reveal what drives churn</div></div>
+    <div class="day-date-text">Up next</div>
+  </div>
+  <div class="day-body open" id="day-4-body">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('day-4','tasks')">Tasks</button>
+      <button class="tab-btn" onclick="switchTab('day-4','code')">Code Preview</button>
+      <button class="tab-btn" onclick="switchTab('day-4','why')">Purpose &amp; Goals</button>
+    </div>
+    <div class="tab-panel active" id="day-4-tasks">
+      <ul class="tasks-list">
+        <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Create 03_visualisation.ipynb in Jupyter</div><span class="task-tag">jupyter</span></li>
+        <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Chart 1: Churn distribution bar chart — stayed vs churned</div><span class="task-tag">matplotlib</span></li>
+        <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Chart 2: Churn rate by contract type</div><span class="task-tag">seaborn</span></li>
+        <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Chart 3: Tenure distribution — churned vs stayed</div><span class="task-tag">matplotlib</span></li>
+        <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Save all 3 charts to reports/ as PNG files (dpi=150)</div><span class="task-tag">output</span></li>
+        <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Write analytical observation markdown cell after each chart</div><span class="task-tag">docs</span></li>
+        <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Commit and push to GitHub</div><span class="task-tag">git</span></li>
+      </ul>
+    </div>
+    <div class="tab-panel" id="day-4-code">
+      <p class="code-section-lbl">Code you will write today</p>
+      <div class="code-block">
+        <div class="code-step-lbl">Chart 1 — Churn distribution</div>
+        <div class="code-snippet">import matplotlib.pyplot as plt
+import seaborn as sns
+
+df = pd.read_csv('../data/churn_cleaned.csv')
+sns.set_style("whitegrid")
+
+fig, ax = plt.subplots(figsize=(8, 5))
+df['Churn'].value_counts().plot(kind='bar',
+    color=['steelblue', 'salmon'], ax=ax)
+ax.set_title('Customer Churn Distribution',
+    fontsize=14, fontweight='bold')
+ax.set_xticklabels(['Stayed', 'Churned'], rotation=0)
+plt.tight_layout()
+plt.savefig('../reports/churn_distribution.png', dpi=150)
+plt.show()</div>
+        <div class="code-explain"><strong>New concepts introduced:</strong><br><br><code>plt.subplots(figsize=(8,5))</code> — creates a figure of set dimensions. fig is the whole canvas, ax is the chart area inside it. Separating these gives precise control over every element.<br><br><code>kind='bar'</code> — tells pandas to draw a bar chart from the value counts.<br><br><code>dpi=150</code> — dots per inch. Higher means sharper image. 150 is sufficient for portfolio screenshots. Use 300 for print quality.</div>
+      </div>
+      <div class="code-block">
+        <div class="code-step-lbl">Chart 2 — Churn by contract type</div>
+        <div class="code-snippet">churn_by_contract = df.groupby('Contract')['Churn'].mean()
+
+fig, ax = plt.subplots(figsize=(8, 5))
+churn_by_contract.sort_values().plot(kind='bar',
+    color='steelblue', ax=ax)
+ax.set_title('Churn Rate by Contract Type',
+    fontsize=14, fontweight='bold')
+ax.set_ylabel('Churn Rate')
+ax.set_xticklabels(ax.get_xticklabels(), rotation=0)
+plt.tight_layout()
+plt.savefig('../reports/churn_by_contract.png', dpi=150)
+plt.show()</div>
+        <div class="code-explain"><strong>New concept: groupby + mean</strong><br><br><code>df.groupby('Contract')['Churn'].mean()</code> is one of the most powerful pandas patterns. It groups all rows by Contract type, then calculates the mean Churn value for each group.<br><br>Because Churn is 0 or 1, the mean IS the churn rate. If 43 out of 100 month-to-month customers churned, the mean is 0.43 — a 43% churn rate. This pattern works for any binary outcome column and you will use it constantly as an analyst.</div>
+      </div>
+    </div>
+    <div class="tab-panel" id="day-4-why">
+      <div class="why-box"><div class="why-lbl">Purpose of Day 4</div><div class="why-txt">Numbers alone do not persuade people — charts do. A hiring manager reading "43% of month-to-month customers churned" is less impactful than seeing a bar chart where that bar is three times taller than the two-year bar. Visualisation is the bridge between analysis and decision-making. It is also the first thing recruiters screenshot from your GitHub.</div></div>
+      <div class="why-box"><div class="why-lbl">Goal for today</div><div class="why-txt">Produce 3 publication-quality charts saved as PNG files in reports/. Each chart tells one clear story. Each has a written observation explaining what it means in business terms. After today your GitHub shows real analytical output — something visual and immediately impressive.</div></div>
+      <div class="alt-box"><div class="alt-lbl">Alternative approaches</div><div class="alt-txt"><strong>Plotly</strong> creates interactive charts with hover and zoom — more impressive in a deployed dashboard but more code for initial EDA. <strong>Seaborn</strong> produces statistical charts with less code than matplotlib. We use both throughout the project. Later on Day 8 we switch to Plotly for the Streamlit dashboard where interactivity genuinely adds value for users.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DAYS 5-10 LOCKED -->
+<div class="day-card locked" id="day-5">
+  <div class="day-header" onclick="toggleDay('day-5')">
+    <div class="day-num">Day 05</div><div class="day-icon">&#128274;</div>
+    <div class="day-info"><div class="day-title-text">README &amp; Documentation</div><div class="day-subtitle-text">Write the README that makes recruiters stop scrolling</div></div>
+    <div class="day-date-text">Locked</div>
+  </div>
+  <div class="day-body" id="day-5-body"><div style="padding:24px"><ul class="tasks-list">
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Write project overview section</div><span class="task-tag">readme</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Add dataset description table</div><span class="task-tag">readme</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Add key findings with actual numbers from the analysis</div><span class="task-tag">readme</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Embed chart screenshots inline in the README</div><span class="task-tag">readme</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Add installation and usage instructions</div><span class="task-tag">readme</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Add folder structure diagram</div><span class="task-tag">readme</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Commit and push final README</div><span class="task-tag">git</span></li>
+  </ul></div></div>
+</div>
+
+<div class="day-card locked" id="day-6">
+  <div class="day-header" onclick="toggleDay('day-6')">
+    <div class="day-num">Day 06</div><div class="day-icon">&#128274;</div>
+    <div class="day-info"><div class="day-title-text">Machine Learning — Model Training</div><div class="day-subtitle-text">Train Random Forest and XGBoost churn prediction models</div></div>
+    <div class="day-date-text">Locked</div>
+  </div>
+  <div class="day-body" id="day-6-body"><div style="padding:24px"><ul class="tasks-list">
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Install scikit-learn and xgboost</div><span class="task-tag">setup</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Encode all categorical columns using pd.get_dummies()</div><span class="task-tag">feature eng</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Split data: 80% train, 20% test using train_test_split</div><span class="task-tag">ml</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Train Random Forest classifier</div><span class="task-tag">ml</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Train XGBoost classifier</div><span class="task-tag">ml</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Evaluate both: accuracy, precision, recall, F1</div><span class="task-tag">evaluation</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Commit and push</div><span class="task-tag">git</span></li>
+  </ul></div></div>
+</div>
+
+<div class="day-card locked" id="day-7">
+  <div class="day-header" onclick="toggleDay('day-7')">
+    <div class="day-num">Day 07</div><div class="day-icon">&#128274;</div>
+    <div class="day-info"><div class="day-title-text">Model Evaluation &amp; SHAP</div><div class="day-subtitle-text">Understand why the model predicts churn using SHAP values</div></div>
+    <div class="day-date-text">Locked</div>
+  </div>
+  <div class="day-body" id="day-7-body"><div style="padding:24px"><ul class="tasks-list">
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Plot ROC curve for both models</div><span class="task-tag">evaluation</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Calculate and plot AUC-ROC score</div><span class="task-tag">evaluation</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Install and run SHAP for XGBoost feature importance</div><span class="task-tag">shap</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Identify and rank top 5 churn drivers</div><span class="task-tag">analysis</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Write model interpretation summary</div><span class="task-tag">docs</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Commit and push</div><span class="task-tag">git</span></li>
+  </ul></div></div>
+</div>
+
+<div class="day-card locked" id="day-8">
+  <div class="day-header" onclick="toggleDay('day-8')">
+    <div class="day-num">Day 08</div><div class="day-icon">&#128274;</div>
+    <div class="day-info"><div class="day-title-text">Streamlit Dashboard</div><div class="day-subtitle-text">Build and deploy an interactive churn prediction app</div></div>
+    <div class="day-date-text">Locked</div>
+  </div>
+  <div class="day-body" id="day-8-body"><div style="padding:24px"><ul class="tasks-list">
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Install Streamlit</div><span class="task-tag">setup</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Build dashboard/app.py with key charts and metrics</div><span class="task-tag">streamlit</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Add churn risk prediction input form</div><span class="task-tag">streamlit</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Test dashboard locally</div><span class="task-tag">testing</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Deploy to Streamlit Cloud for free</div><span class="task-tag">deployment</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Add live link to README</div><span class="task-tag">readme</span></li>
+  </ul></div></div>
+</div>
+
+<div class="day-card locked" id="day-9">
+  <div class="day-header" onclick="toggleDay('day-9')">
+    <div class="day-num">Day 09</div><div class="day-icon">&#128274;</div>
+    <div class="day-info"><div class="day-title-text">Business Report &amp; CV Bullets</div><div class="day-subtitle-text">Executive summary, portfolio bullets, STAR interview answer</div></div>
+    <div class="day-date-text">Locked</div>
+  </div>
+  <div class="day-body" id="day-9-body"><div style="padding:24px"><ul class="tasks-list">
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Write 1-page executive summary PDF</div><span class="task-tag">report</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Write 4 CV bullet points for this project</div><span class="task-tag">cv</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Write STAR interview answer for this project</div><span class="task-tag">interview</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Draft LinkedIn post announcing the project</div><span class="task-tag">linkedin</span></li>
+  </ul></div></div>
+</div>
+
+<div class="day-card locked" id="day-10">
+  <div class="day-header" onclick="toggleDay('day-10')">
+    <div class="day-num">Day 10</div><div class="day-icon">&#128274;</div>
+    <div class="day-info"><div class="day-title-text">Final Polish — Portfolio Ready</div><div class="day-subtitle-text">Clean up, pin on GitHub, publish on LinkedIn</div></div>
+    <div class="day-date-text">Locked</div>
+  </div>
+  <div class="day-body" id="day-10-body"><div style="padding:24px"><ul class="tasks-list">
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Final review of all notebooks — remove debug code</div><span class="task-tag">polish</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Ensure all charts saved at 300 DPI for print quality</div><span class="task-tag">polish</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Final README review and spell check</div><span class="task-tag">readme</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Pin repository on GitHub profile</div><span class="task-tag">github</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Publish LinkedIn post about the completed project</div><span class="task-tag">linkedin</span></li>
+    <li class="task-item" onclick="toggleTask(this)"><div class="task-checkbox"></div><div class="task-text">Update CV with project bullet points</div><span class="task-tag">cv</span></li>
+  </ul></div></div>
+</div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-left">John Ayomide &middot; Customer Churn Analysis &middot; Started 29 May 2026</div>
+  <a class="github-link" href="https://github.com/John-Ayomide/customer-churn-analysis" target="_blank">github.com/John-Ayomide/customer-churn-analysis</a>
+</div>
+
+</div>
+
+<script>
+function toggleDay(id){
+  var b=document.getElementById(id+'-body');
+  if(b)b.classList.toggle('open');
+}
+function switchTab(day,tab){
+  var db=document.getElementById(day+'-body');
+  if(!db)return;
+  db.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});
+  db.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
+  var p=document.getElementById(day+'-'+tab);
+  if(p)p.classList.add('active');
+  db.querySelectorAll('.tab-btn').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').indexOf("'"+tab+"'")>-1)b.classList.add('active');
+  });
+}
+function toggleTask(el){
+  el.classList.toggle('done');
+  var c=el.querySelector('.task-checkbox');
+  if(el.classList.contains('done')){c.innerHTML='&#10003;';}else{c.innerHTML='';}
+  updateStats();
+}
+function updateStats(){
+  var done=document.querySelectorAll('.task-item.done').length;
+  document.getElementById('tasks-done').textContent=done;
+}
+document.addEventListener('DOMContentLoaded',function(){updateStats();});
+</script>
+</body>
+</html>
