@@ -9,6 +9,14 @@
 
 ---
 
+## Live Dashboard
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://john-churn-analysis.streamlit.app)
+
+> Click the badge above to open the interactive churn prediction dashboard
+
+---
+
 ## Overview
 
 This project analyses a telecom company's customer dataset to understand
